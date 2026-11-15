@@ -4,12 +4,69 @@ Entry for the Solar Filament Segmentation Challenge 2026. From a 2048 x 2048 H-a
 returns one mask per filament. Everything needed to reproduce the submitted predictions is in this
 repository, including the weights; nothing is retrained.
 
+## Our approach
+
+The method has two parts.
+
+1. **A segmentation network built from existing components.** The image encoder of SAM 2.1 (Hiera-B+, pretrained
+   by Meta) is kept frozen and adapted with LoRA (rank 4) and trainable LayerNorms; an FPN decoder turns its four
+   feature scales into one filament-probability map. Only 5.45 M of 74.1 M weights are trained, which suits a
+   training set of 707 images. Five fold models and four mirrored views are averaged.
+2. **A keep rule derived from the metric.** Connected components of the probability map (p >= 0.45) are the
+   candidates. Panoptic Quality is `sum IoU / (TP + FP/2 + FN/2)`, so reporting one more candidate raises the
+   score only if its expected IoU is above PQ/2. A gradient-boosted regressor predicts that IoU from 22 features
+   of the candidate (shape, probability, image contrast, position, how sharply the network bounds it), and the
+   candidate is kept if the prediction exceeds a single cut-off (0.19, close to PQ/2).
+
+Why the second part: an error analysis of our first submission showed that the score was lost in recognition
+(RQ 0.59), not in mask quality (SQ 0.67, already above the agreement between two human annotators). Global area
+and confidence thresholds could not separate good candidates from bad ones; a per-candidate decision could.
+
 ```
 test image ─► preprocess ─► probability map ─► candidates ─► keep rule ─► CSV
               limb fit,      SAM 2.1 Hiera-B+   connected     learned,     filament_id,
               flattening,    + LoRA + FPN,      components    per          segmentation_rle
               z-score        5 folds x 4 flips  of p >= 0.45  candidate    (COCO RLE)
 ```
+
+Details: `METHODS.md`. Every experiment with its numbers: `EXPERIMENTS.md`.
+
+## What we tried
+
+All of the following were trained on the 707 competition training images only and evaluated the same way
+(see the table below).
+
+| approach | idea | outcome |
+|---|---|---|
+| U-Net | a light convolutional model trained from scratch with the same data, folds and losses | clearly below SAM 2 (many more false positives) |
+| SAM 2.1 + LoRA + FPN, global decode | area and confidence thresholds on the probability map, settings chosen on validation folds | our first submission |
+| Multi-annotator fine-tuning | continue training with every annotator record as an extra target | no gain |
+| Self-training with pseudo-labels | a teacher labels unlabeled GONG frames, a student retrains on labeled + pseudo-labeled data (two variants: frames chosen by DINOv2 nearest neighbours; pseudo-labels filtered by agreement under flips) | +0.002 and +0.006, within fold-to-fold noise; not adopted |
+| Decode search | 4,992 global threshold / area / confidence settings, per-image adaptive thresholds, a peak-probability rule, gap closing | none above +0.003 |
+| **Learned keep rule** | per-candidate decision from the PQ break-even point | **+0.012 to +0.014, adopted** |
+| **Four mirrored views** | average the model over flips | **+0.006 to +0.008, adopted** |
+| Per-filament threshold (component tree) | choose the probability level per object | +0.001 to +0.002, not separable from zero |
+| Eight views; hole filling; averaging with the U-Net | | +0.002; +0.0003; +0.001 with more merged filaments; not adopted |
+
+## Comparison
+
+707 training images, each predicted by a fold model that never saw it; organisers' self-evaluation rule; every
+annotator record scored (1,154 records). One-to-many = annotated filaments overlapped by several predictions;
+many-to-one = predictions overlapping several annotated filaments.
+
+| approach | PQ | SQ | RQ | TP / FP / FN | one-to-many | many-to-one | public board |
+|---|---|---|---|---|---|---|---|
+| Two human annotators against each other (296 multi-annotated images) | 0.340 | 0.634 | 0.536 | 4292 / 3709 / 3709 | | | |
+| U-Net, global decode | 0.3534 | 0.655 | 0.540 | 5027 / 5406 / 3172 | 610 | 183 | |
+| SAM 2.1 + LoRA + FPN, multi-annotator fine-tuning, global decode | 0.3895 | 0.662 | 0.588 | 4859 / 3469 / 3340 | 521 | 139 | |
+| SAM 2.1 + LoRA + FPN, global decode (first submission) | 0.3943 | 0.665 | 0.593 | 4858 / 3322 / 3341 | 527 | 118 | 0.34 |
+| + self-training, flip-agreement filter | 0.4004 | 0.664 | 0.603 | 4884 / 3123 / 3315 | 466 | 132 | 0.34 |
+| **SAM 2.1 + LoRA + FPN + keep rule + 4 views (this repository)** | **0.4183** | **0.669** | **0.625** | 4925 / 2634 / 3274 | **291** | **112** | **0.36** |
+
+The submitted pipeline has the highest PQ, SQ and RQ and the fewest fragmented and merged filaments. Against
+the first submission: +0.0240 PQ (paired bootstrap over images, 95 % interval +0.019 to +0.029), 21 % fewer
+false positives and 45 % fewer one-to-many cases. Rows 2 to 5 read our own cached copies of the same frames (a different JPEG encoding), the last row
+the competition JPEGs, as the notebook does (the first-submission decode scores 0.3983 on the JPEGs).
 
 ## Run it
 
