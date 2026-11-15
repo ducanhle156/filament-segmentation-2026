@@ -38,7 +38,7 @@ All of the following were trained on the 707 competition training images only an
 
 | approach | idea | outcome |
 |---|---|---|
-| U-Net | a light convolutional model trained from scratch with the same data, folds and losses | clearly below SAM 2 (many more false positives) |
+| U-Net | a light convolutional model trained from scratch with the same data, folds and Dice + clDice loss | clearly below SAM 2 (many more false positives) |
 | SAM 2.1 + LoRA + FPN, global decode | area and confidence thresholds on the probability map, settings chosen on validation folds | our first submission |
 | Multi-annotator fine-tuning | continue training with every annotator record as an extra target | no gain |
 | Self-training with pseudo-labels | a teacher labels unlabeled GONG frames, a student retrains on labeled + pseudo-labeled data (two variants: frames chosen by DINOv2 nearest neighbours; pseudo-labels filtered by agreement under flips) | +0.002 and +0.006, within fold-to-fold noise; not adopted |
