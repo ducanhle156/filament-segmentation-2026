@@ -1,0 +1,56 @@
+{
+ "trunk_sha256": "1aab11524be2b52bbe72ffaccae43c14d7bf4114560aa7091fa4f48a0d7ee69e",
+ "trunk_parts": 3,
+ "folds": {
+  "0": {
+   "file": "kag13_fold0.pt",
+   "sha256": "a58a391d3b1fa5076ba61f7b5ecd138be42f7da66bf7b8facbe3752091de4252",
+   "tensors": 217,
+   "params": 5448865,
+   "frozen_tensors": 202,
+   "best_val_pq": 0.41051010084999384,
+   "best_epoch": 28,
+   "checkpoint_sha256": "f72c8fd077a053d2127205f3f5f8d9c70b0530c0d62481f0c0868b09354e4c27"
+  },
+  "1": {
+   "file": "kag13_fold1.pt",
+   "sha256": "1d670af961cc90375914f0d1ea2268237563da1f24cc345a81382f48db417c9d",
+   "tensors": 217,
+   "params": 5448865,
+   "frozen_tensors": 202,
+   "best_val_pq": 0.4229624854675862,
+   "best_epoch": 0,
+   "checkpoint_sha256": "8327581c985e1cee3c948a3e272f2bb5cd9b3f055acabe37a150870f3f3fad87"
+  },
+  "2": {
+   "file": "kag13_fold2.pt",
+   "sha256": "29573e7c40a8897560a283d0f1f352c8d62a265236df9ceaa1e86cba878e6cb5",
+   "tensors": 217,
+   "params": 5448865,
+   "frozen_tensors": 202,
+   "best_val_pq": 0.4197745513953199,
+   "best_epoch": 36,
+   "checkpoint_sha256": "7662aabfd96b9c5997ff6b235fbf260f09f5b44336aaabbae66d49ed37cadaae"
+  },
+  "3": {
+   "file": "kag13_fold3.pt",
+   "sha256": "8fbb0c392083862bb6c16470962cccf0ffc1741f5ec2737c2cd472cbfa4256c5",
+   "tensors": 217,
+   "params": 5448865,
+   "frozen_tensors": 202,
+   "best_val_pq": 0.4183717109101219,
+   "best_epoch": 18,
+   "checkpoint_sha256": "2ce5a8ac06b5f9b34ae1001ef773aa9a25442181c1d3be20c5daf3aa610cd514"
+  },
+  "4": {
+   "file": "kag13_fold4.pt",
+   "sha256": "461b0a48c05495c3ab849ea15e06555f4057f3487b4ae66f390bd11ad4be0cf7",
+   "tensors": 217,
+   "params": 5448865,
+   "frozen_tensors": 202,
+   "best_val_pq": 0.4114197040150907,
+   "best_epoch": 33,
+   "checkpoint_sha256": "12ffba3636e7aee582b21ddb7548f0f7a45c67d8327c55ceb7a93b831edb194b"
+  }
+ }
+}

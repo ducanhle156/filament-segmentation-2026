@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+# joined from weights/sam2/*.part* on first use
+weights/sam2/sam2.1_hiera_base_plus.pt
+# notebook / command outputs
+outputs/
+runs/
+data/

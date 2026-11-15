@@ -1,0 +1,45 @@
+# Kaggle stage A — arm09's recipe (models/sam2/lora/arm09.yaml) retrained on
+# the 707 competition train images only. Only the dataset bookkeeping
+# differs from arm09: the split file (splits/folds_k707_v1.json,
+# grouped folds over the 707) and where results land. Labels come from the
+# same frozen tile cache, filtered by image id; every id is a record the
+# competition train file provides (kaggle/src/build_splits.py checks that).
+
+arm_id: kag09_sam2_lora
+results_dir: runs
+
+data:
+  splits_file: splits/folds_k707_v1.json
+
+model:
+  type: encoder_decoder
+  encoder:
+    name: sam2_hiera_bplus
+    checkpoint: weights/sam2/sam2.1_hiera_base_plus.pt
+    frozen: false
+    taps: [1, 2, 3, 4]
+    peft:
+      method: lora
+      rank: 4
+      alpha: 16
+      targets: [qkv, proj]
+      train_layernorms: true
+  decoder:
+    name: fpn
+    channels: 256
+
+train:
+  epochs: 100
+  lr: 1.0e-4
+  lr_encoder: 1.0e-5
+  warmup_epochs: 5
+  min_epochs: 15
+  early_stop_patience: 15
+  val_ema: 0.5
+  anneal_on_stop: true
+  anneal_epochs: 10
+
+compute:
+  glist: a100
+  mem: 48gb
+  walltime: "24:00:00"

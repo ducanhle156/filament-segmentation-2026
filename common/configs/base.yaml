@@ -1,0 +1,115 @@
+# Shared defaults inherited by every arm (00_conventions.md, Config schema).
+# An arm file overrides only what differs from this. Rule 1 — one variable per
+# comparison — is checkable because of that: `common/utils/config.differing_keys`
+# diffs two resolved configs and lists exactly what changed.
+
+arm_id: base
+seed: 0
+results_dir: models/_harness/results     # every real arm overrides this
+
+data:
+  processed_dir: data/processed/v1       # frozen Phase 1 tile cache
+  interim_dir: data/interim              # full disks, for rotation and stitching
+  splits_file: splits/folds_v1.json      # frozen Phase 2 folds
+  tile_size: 512
+  overlap: 0.25
+  augment: true                          # false reads the frozen tiles verbatim
+
+model:
+  type: monolithic                       # monolithic | encoder_decoder
+  arch:
+    name: tiny_cnn                       # registry key
+
+# Fixed for all arms. An arm may not override this without a documented
+# reason — otherwise a backbone comparison becomes a
+# backbone-plus-augmentation comparison.
+augment:
+  version: v2                            # recorded in every metrics.json
+  enabled: true
+  rotation: true                         # full 360, sampled from the full disk
+  flip_h: 0.5
+  flip_v: 0.5
+  blur_sigma: [0.0, 1.5]                 # mimics seeing variation; v2: masked
+                                         # to the analysis region so the
+                                         # off-disk sentinel never bleeds in
+  intensity_scale: [0.9, 1.1]
+  gamma: null                            # v2: off. v1 used [0.8, 1.25], which
+                                         # shifted the on-disk median by up to
+                                         # 0.8 sigma after the z-score — an
+                                         # offset val/test never see
+  scale_jitter: [0.9, 1.1]
+  # elastic deformation: not used. colour ops: not applicable, single channel.
+
+loss:
+  terms:
+    - {name: dice, weight: 1.0}
+    - {name: cldice, weight: 0.5, iters: 5}
+
+train:
+  epochs: 100
+  batch_size: 8
+  optimizer: adamw
+  weight_decay: 0.01
+  lr: 1.0e-4
+  lr_encoder: 1.0e-5                     # ignored when the encoder is frozen
+  scheduler: cosine
+  warmup_epochs: 5                       # linear ramp, then cosine over the rest
+  amp: true
+  grad_clip: 1.0
+  early_stop_patience: 30                # was 15: fired on transient val dips
+  min_epochs: 40                         # never stop before this epoch
+  # Early stop and best-state selection watch an exponential moving average
+  # of val clDice when val_ema > 0 (score = a*prev + (1-a)*raw); 0 = raw.
+  # Motivation: on the sam_FM LoRA runs the val curve is a flat plateau plus
+  # noise and the raw best epoch wandered over a 30-epoch window.
+  val_ema: 0.0
+  # When patience fires with anneal_on_stop, the run does not exit: it reloads
+  # the best state and runs the last `anneal_epochs` of the cosine schedule
+  # at low LR, keeping the best of that tail. Off for the from-scratch arms
+  # (their cosine completes anyway); on for arms on a pretrained encoder,
+  # which plateau by epoch ~5 and would otherwise stop with the LR at ~90 %
+  # of peak. Both keys are part of the config hash.
+  anneal_on_stop: false
+  anneal_epochs: 10
+  num_workers: 10                        # U-Net is GPU-bound at 4 (docs/profiles); headroom for FM arms
+                                         # on the CPU side, ~0.15 s/step seen
+  torch_threads: 4                       # never the full core count, see
+                                         # common/utils/runtime.py
+
+# Where and how the job runs. Not part of the config hash (see
+# common/utils/config.NON_SCIENTIFIC_KEYS): none of this can change a result.
+# scripts/submit_pbs.py and submit_hpsearch.py read it; CLI flags override.
+# FM arms set `glist: a100` (user rule, 2026-08-25); from-scratch arms stay on
+# a40 so the 8 A100s on CCAST are free for the arms that need them, and so a
+# run's wall clock is comparable to the others of its arm.
+compute:
+  queue: gpus
+  glist: a40                             # a100 | a40 | a10 | l4 | h100
+  ngpus: 1                               # one GPU per (arm, seed, fold); see
+                                         # 00_conventions.md, Compute
+  ncpus: 12                              # >= num_workers + 2
+  mem: 32gb
+  walltime: "36:00:00"
+  deterministic: true
+  save_checkpoint: true
+  resume: true                           # continue from <run>/last.pt if present
+
+eval:
+  # Rubric 1 (paper, apple-to-apple with the filament literature): pixel
+  # and skeleton level. Rubric 2 (Kaggle / IEEE Big Data Cup 2026 view):
+  # object level, from 8-connected components matched at IoU > instance_tau.
+  # Both are always computed; collect_phase3 tabulates them separately.
+  metrics: [iou, background_iou, miou, dice, cldice, centerline_recall,
+            centerline_precision,
+            pq, sq, rq, rq_avg, inst_precision, inst_recall, miss_rate,
+            pixel_precision, pixel_recall]
+  instance_tau: 0.5
+  stitch: true
+  threshold: 0.5
+  save_predictions: false
+
+# --smoke overrides, per Step 14
+smoke:
+  n_images: 20
+  iterations: 50
+  epochs: 2

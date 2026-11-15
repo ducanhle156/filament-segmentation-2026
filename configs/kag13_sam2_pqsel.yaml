@@ -1,0 +1,54 @@
+# Kaggle stage B — arm13's recipe (models/sam2/lora/arm13.yaml): warm start
+# from stage A's fold checkpoint, dice + clDice + component loss, 40-epoch
+# fine-tune at 3e-5/3e-6, early stop and checkpoint selection on full-disk
+# pooled validation PQ at the benchmark decode (0.50 / 400 / 0.85).
+# Differs from arm13 only in the split file, the warm-start path and the
+# results directory.
+
+arm_id: kag13_sam2_pqsel
+results_dir: runs
+
+data:
+  splits_file: splits/folds_k707_v1.json
+
+model:
+  type: encoder_decoder
+  encoder:
+    name: sam2_hiera_bplus
+    checkpoint: weights/sam2/sam2.1_hiera_base_plus.pt
+    frozen: false
+    taps: [1, 2, 3, 4]
+    peft:
+      method: lora
+      rank: 4
+      alpha: 16
+      targets: [qkv, proj]
+      train_layernorms: true
+  decoder:
+    name: fpn
+    channels: 256
+
+loss:
+  terms:
+    - {name: dice, weight: 1.0}
+    - {name: cldice, weight: 0.5, iters: 5}
+    - {name: component, weight: 0.5, fp_w: 2.0, fn_w: 2.0, miss_frac: 0.1}
+
+train:
+  init_from: runs/kag09_sam2_lora/seed0/fold{fold}/checkpoint.pt
+  select_metric: pq
+  select_decode: [0.50, 400, 0.85]
+  epochs: 40
+  lr: 3.0e-5
+  lr_encoder: 3.0e-6
+  warmup_epochs: 2
+  min_epochs: 10
+  early_stop_patience: 10
+  val_ema: 0.5
+  anneal_on_stop: true
+  anneal_epochs: 5
+
+compute:
+  glist: a100
+  mem: 48gb
+  walltime: "16:00:00"

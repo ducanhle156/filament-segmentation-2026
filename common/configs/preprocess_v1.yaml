@@ -1,0 +1,62 @@
+# Phase 1 preprocessing contract, version v1.
+#
+# This file IS the frozen preprocessing. Changing any value here creates v2
+# (`00_conventions.md` rule 2); v1 is never mutated. Every arm records which
+# version it read.
+
+version: v1
+seed: 42
+
+source:
+  raw_dir: data
+  coco: cleaned_magfilo_2026_SEED_42_coco.json
+
+limb:
+  # Step 7. radial_median is robust to filaments (dark outliers) and plage
+  # (bright outliers); poly4 and none exist as ablation controls.
+  method: radial_median          # radial_median | poly4 | none
+  # 1024 bins over r/R in [0, 1] is ~0.88 px per bin at R ~ 900, with the
+  # smoothing at one bin. Coarser settings (512 bins, sigma 2) leave a 27%
+  # residual in the outermost 1% of the radius, where the profile halves
+  # within a few pixels and the chromospheric rim sits; 1024/1.0 takes that
+  # to under 1% while leaving the inner disk identical.
+  n_bins: 1024                   # r/R bins for the correction profile
+  smooth_bins: 1.0               # gaussian sigma, in bins
+  floor_frac: 0.05               # never divide by less than this * inner level
+  flat_bins: 128                 # independent, coarser binning for the Step 7
+                                 # acceptance metric, so flatness is not zero
+                                 # by construction
+  disk:
+    # The disk boundary is fitted from the bright chromospheric rim, not by
+    # thresholding: the scattered-light halo outside the limb varies by 5x
+    # between sites and biases threshold fits by up to 130 px in radius.
+    n_rays: 720
+    search_frac: 0.07
+    iters: 3
+    # The limb-darkening profile is always fitted over the whole disk (r <= R).
+    # analysis_scale sets the smaller region everything downstream uses:
+    # normalization statistics, the off-disk sentinel, tile rejection, and the
+    # loss and metric masks. Filaments within the excluded annulus are
+    # foreshortened into the line of sight and sit under the chromospheric
+    # rim, so prior filament work scores models on the disk interior only.
+    analysis_scale: 0.95
+
+normalize:
+  # Step 8. Per image, never dataset-global.
+  method: robust_z               # (x - median) / (IQR / 1.349) over on-disk pixels
+  clip: 5.0
+  off_disk_sentinel: 0.0
+
+tiling:
+  # Step 9. 512 / stride 384 gives a 5x5 grid that covers 2048x2048 exactly.
+  tile: 512
+  overlap: 0.25
+  keep_ratio: 0.25               # discard tiles more than 75% off-disk
+  bg_keep_rate: 0.20             # keep 20% of foreground-free eligible tiles
+  rotate_before_tiling: true     # train-time contract; the cache is never rotated
+
+output:
+  interim_dir: data/interim
+  processed_dir: data/processed/v1
+  images_per_shard: 4
+  dtype: float16

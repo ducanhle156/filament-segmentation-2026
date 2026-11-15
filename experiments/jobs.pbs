@@ -1,0 +1,23 @@
+#!/bin/bash
+#PBS -q def-medium
+#PBS -N try_error
+#PBS -l select=1:mem=48gb:ncpus=16
+#PBS -l walltime=04:00:00
+#PBS -W group_list=x-ccast-prj-cle
+#PBS -j oe
+#PBS -k oed
+#PBS -o logs/
+
+# try_error experiments (kaggle/try_error/README.md). Submit from the repo root:
+#   qsub -v SCRIPT=diagnose.py,ARGS="--workers 16" kaggle/try_error/jobs.pbs
+# GPU stages: add  -q gpus -l select=1:mem=48gb:ncpus=8:ngpus=1:glist=<idle>
+
+cd ${PBS_O_WORKDIR:-<research repository>}
+mkdir -p logs
+PY=${PY:-.venv/bin/python}
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export HF_HOME=$PWD/.hf HF_HUB_OFFLINE=1
+export MPLCONFIGDIR=${MPLCONFIGDIR:-$PWD/.mplconfig}
+echo "host $(hostname)  script ${SCRIPT:?}  args ${ARGS}  started $(date -Is)"
+$PY kaggle/try_error/$SCRIPT $ARGS || exit $?
+echo "finished $(date -Is)"
