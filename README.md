@@ -34,7 +34,8 @@ Details: `METHODS.md`. Every experiment with its numbers: `EXPERIMENTS.md`.
 ## What we tried
 
 All of the following were trained on the 707 competition training images only and evaluated the same way
-(see the table below).
+(see the table below), except the magnetogram row, which comes from our earlier research on the public
+MAGFiLO release (958 images) and is not part of the submission or of this repository.
 
 | approach | idea | outcome |
 |---|---|---|
@@ -46,6 +47,7 @@ All of the following were trained on the 707 competition training images only an
 | **Learned keep rule** | per-candidate decision from the PQ break-even point | **+0.012 to +0.014, adopted** |
 | **Four mirrored views** | average the model over flips | **+0.006 to +0.008, adopted** |
 | Per-filament threshold (component tree) | choose the probability level per object | +0.001 to +0.002, not separable from zero |
+| Magnetograms (earlier research, not in the submission) | GONG line-of-sight magnetograms paired with the H-alpha images (same site, within 60 min); polarity inversion line (PIL) features as extra input channels, as a loss weight and in the decode | 77 % of annotated filaments lie within 30 px of the large-scale PIL (22 % for a mirrored control), but no variant improved PQ beyond noise (-0.003 to +0.003 as input); the submission uses H-alpha only |
 | Eight views; hole filling; averaging with the U-Net | | +0.002; +0.0003; +0.001 with more merged filaments; not adopted |
 
 ## Comparison
